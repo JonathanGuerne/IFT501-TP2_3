@@ -29,3 +29,19 @@ while move:
         # check if the cluster found is different from the old one
         # if so change the transactions cluster and set move to true
 
+
+
+def cf_clusters(clusters):
+    somme = 0
+    for cluster in clusters :
+        somme += (len(cluster)/len(transactions))*cf_cluster(cluster)
+    return somme
+
+def cf_cluster(cluster):
+    somme = 0
+    for transaction in cluster:
+        somme += f(transaction,cluster)
+    return (1/len(cluster))*somme
+
+def f(transaction, cluster):
+    pass
