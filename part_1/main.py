@@ -26,7 +26,7 @@ for i in range(1, 2):
             words[line_array[1]][1] += 1
 
 
-
+print(len(documents))
 
 print("reading done\n")
 
