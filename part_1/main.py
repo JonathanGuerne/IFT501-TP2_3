@@ -13,7 +13,7 @@ def docs_containing_word(word):
     return num_doc
 
 
-for i in range(1, 2):
+for i in range(1, 4):
     with open('../docwords' + str(i) + '.txt', 'r', encoding='utf-8') as fin:
         for line in fin:
             line_array = line.split(" ")
@@ -43,7 +43,16 @@ results.reverse()
 
 print("results found\nstart writing\n")
 
+words_reduced = []
 
 with open('../results.txt','w',encoding='utf-8') as fou:
-    for i in range(5000):
+    for i in range(20):
+        words_reduced.append(results[i][0])
         fou.write(str(results[i][0])+"\n")
+
+with open('../docwordsreduced.txt', 'w', encoding='utf-8') as fou:
+    for i in range(1, 4):
+        with open('../docwords' + str(i) + '.txt', 'r', encoding='utf-8') as fin:
+            for line in fin:
+                if line.split(' ')[1] in words_reduced:
+                    fou.write(line)
