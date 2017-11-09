@@ -2,12 +2,12 @@ import math
 import random
 import numpy
 
+
 #############
 #  Classes  #
 #############
 
 class Vector:
-
     def __init__(self):
         self.dimensions = []
         self.dist = math.inf
@@ -18,6 +18,7 @@ class Vector:
 
     def update_dimension(self, index, dimension):
         self.dimensions[index] = dimension
+
 
 ###############
 #  Functions  #
@@ -43,13 +44,24 @@ def load_docwordsreduced():
     return docwords
 
 
+def calculate_number_of_documents():
+    set = {}
+
+    for line in docwords:
+        doc = line.split(" ")[0]
+        set[doc] = None
+
+    return len(set)
+
+
 def init_vectors(number_of_documents, vector_size):
     """initialize a vector (D=5000) for each documents filled with 0."""
-    vectors = []
+    vectors = {}
     for j in range(number_of_documents):
-        vectors.append(Vector())
+        doc_id = docwords[j].split(" ")[0]
+        vectors[doc_id] = Vector()
         for i in range(vector_size):
-            vectors[j].add_dimension(0)
+            vectors[doc_id].add_dimension(0)
 
     return vectors
 
@@ -62,6 +74,8 @@ def find_word_index(word):
             return index
         index += 1
 
+    return EOFError
+
 
 def update_vectors(vectors):
     """update the vector of each documents according to the frequency of each word."""
@@ -69,17 +83,21 @@ def update_vectors(vectors):
         array_line = line.split(" ")
         index = find_word_index(int(array_line[1]))
         dimension = (int((array_line[2])))
-        vectors[(int(array_line[0]) - 1)].update_dimension(index, dimension)
+        vectors[array_line[0]].update_dimension(index, dimension)
 
 
 def cosine_similarity(v1, v2):
     """compute the cosine similarity between two vectors."""
     sum_dot = 0
-    sum_norm = 0
+    sum_norm_v1 = 0
+    sum_norm_v2 = 0
 
     for i in range(len(v1)):
         sum_dot += v1[i] * v2[i]
-        sum_norm += v1[i] * v1[i]
+        sum_norm_v1 += v1[i] * v1[i]
+        sum_norm_v2 += v2[i] * v2[i]
+
+    sum_norm = sum_norm_v1 * sum_norm_v2
 
     if sum_norm != 0:
         return math.acos(sum_dot / math.sqrt(sum_norm))
@@ -97,7 +115,7 @@ def update_clusters_centers(clusters):
             new_cluster.append(0)
 
         number_of_vector = 0
-        for vector in vectors:
+        for vector in vectors.values():
             if vector.cluster == cluster:  # get throw each vector and check if it belongs to the cluster
                 number_of_vector += 1
 
@@ -107,17 +125,26 @@ def update_clusters_centers(clusters):
                     index += 1
 
             if number_of_vector != 0:
-                for i in range(len(cluster)): # divide the sum by the number of vector in order to get the mean value
+                for i in range(len(cluster)):  # divide the sum by the number of vector in order to get the mean value
                     new_cluster[i] = new_cluster[i] / number_of_vector
 
         new_clusters.append(new_cluster)
 
+    is_stable = True
     for i in range(len(clusters)):
         # print(cosine_similarity(clusters[i], new_clusters[i]) - 0.04)
-        if cosine_similarity(clusters[i], new_clusters[i]) < 0.04:
-            return True
+        if cosine_similarity(clusters[i], new_clusters[i]) > 0.04:
+            isStable = False
 
-    return False
+    clusters = new_clusters
+
+    return is_stable
+
+
+def print_vector(vector):
+    print("------------- Vector ------------")
+    for val in vector.dimensions:
+        print(val)
 
 
 def k_means(k, vectors):
@@ -125,20 +152,30 @@ def k_means(k, vectors):
 
     for i in range(k):
         # init cluster with a random vector
-        index = random.randrange(0,len(vectors))
-        clusters.append(vectors[index].dimensions)
+        list_keys = list(vectors.keys())
+        key = str(random.choice(list_keys))
+        clusters.append(vectors[key].dimensions)
 
     stable = False
     while not stable:
-        for vector in vectors:
+        for vector in vectors.values():
             for cluster in clusters:
                 dist = cosine_similarity(vector.dimensions, cluster)
-                print("dist: " + str(dist))
 
                 if dist < vector.dist:
                     vector.cluster = cluster
 
         stable = update_clusters_centers(clusters)
+
+    if k < 10:
+        with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
+            for out_cluster in clusters:
+                for key,vector in vectors.items():
+                    if vector.cluster == out_cluster:
+                        fou.write(key+"\n")
+
+                fou.write("\n" + "-"*20 + "\n")
+
 
 ##########
 #  Main  #
@@ -149,7 +186,7 @@ results = load_results()
 docwords = load_docwordsreduced()
 
 print("Init tools")
-number_of_documents = int(docwords[-1].split(" ")[0])
+number_of_documents = calculate_number_of_documents()
 vector_size = len(results)
 
 print("Init vectors")
@@ -158,4 +195,6 @@ update_vectors(vectors)
 
 print("Start K-Means")
 random.seed()
-k_means(8, vectors)
+nb_clusters = 8
+k_means(nb_clusters, vectors)
+
