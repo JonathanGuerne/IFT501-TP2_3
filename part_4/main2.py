@@ -21,11 +21,14 @@ class Vector:
 
 
 class Cluster:
-    def __init__(self, id):
+
+
+    def __init__(self,id):
         self.center = []
         self.components_weight_array = []
         self.id = id
         self.vectors_array = []
+
 
     def set_center(self, center):
         self.center = center
@@ -183,6 +186,7 @@ def update_clusters_weight(clusters):
 
                 mean = 0
                 for j in range(len(vectors_array)):
+
                     mean += vectors_array[j].components_array[i]
 
                 mean = mean / len(vectors_array)
@@ -228,36 +232,11 @@ def k_means(k, vectors):
         update_clusters_weight(clusters)
         clusters, stable = update_clusters_centers(clusters)
 
-    return clusters
-    # with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
-    #     for out_cluster in clusters:
-    #         empty = True
-    #         for key, vector in vectors.items():
-    #             if vector.cluster_id == out_cluster.id:
-    #                 fou.write(key + "\n")
-    #                 empty = False
-    #
-    #         if not empty:
-    #             fou.write("\n" + "-" * 50 + "\n")
-
-
-def get_vector_from_cluster(cluster):
-    out_vectors = {}
-    for key, vector in vectors.items():
-        if vector.cluster_id == cluster.id:
-            out_vectors[key] = vector
-    return out_vectors
-
-
-def recursive_call(clusters, fou):
-    for cluster in clusters:
-        sub_vectors = get_vector_from_cluster(cluster)
-        if len(sub_vectors) < 30:
-            for key,vector in sub_vectors.items():
-                fou.write(key+"\n")
-            fou.write("\n" + "-" * 50 + "\n")
-        else :
-            recursive_call(k_means(2,sub_vectors),fou)
+    for cluster in clusters :
+        sum = 0
+        for weight in cluster.components_weight_array:
+            print(weight)
+        print(sum)
 
 
 ##########
@@ -265,7 +244,7 @@ def recursive_call(clusters, fou):
 ##########
 
 if __name__ == '__main__':
-    nb_clusters = 2
+    nb_clusters = 300
 
     print("Load files")
     results = load_results()
@@ -281,7 +260,4 @@ if __name__ == '__main__':
 
     print("Start K-Means")
     random.seed()
-
-    clusters = k_means(nb_clusters, vectors)
-    with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
-        recursive_call(clusters, fou)
+    k_means(nb_clusters, vectors)

@@ -168,5 +168,6 @@ venv.bak/
 
 # ignore documents
 docwords*
+doctitles*
 words*
 result*
