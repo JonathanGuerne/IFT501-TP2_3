@@ -1,3 +1,5 @@
+import math
+
 documents = {}  # Document : [list of words]
 words = {}
 
