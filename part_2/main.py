@@ -1,6 +1,7 @@
 import math
 import random
 import numpy
+import statistics
 
 
 #############
@@ -131,16 +132,16 @@ def update_clusters_centers(clusters):
             new_cluster.add_component(0)
             new_cluster.add_component_weight(1)
 
-        number_of_vector = 0
         for vector in vectors.values():
             if vector.cluster_id == cluster.id:  # get throw each vector and check if it belongs to the cluster
-                number_of_vector += 1
+                cluster.vectors_array.append(vector)
 
                 index = 0
                 for component in vector.components_array:  # if so, add the vector in the mean calculation
                     new_cluster.center[index] += component
                     index += 1
 
+        number_of_vector = len(cluster.vectors_array)
         if number_of_vector != 0:
             for i in range(len(cluster.center)):  # divide the sum by the number of vector -> mean value
                 new_cluster.center[i] = new_cluster.center[i] / number_of_vector
@@ -152,6 +153,7 @@ def update_clusters_centers(clusters):
         distance = euclidean_distance(clusters[i].center, new_clusters[i].components_weight_array,
                                       new_clusters[i].center)
 
+        print(distance)
         if distance > numpy.finfo(float).eps:
             is_stable = False
 
@@ -173,29 +175,19 @@ def update_clusters_weight(clusters):
         new_weights = []
         sum_weights_sqr = 0
 
-        vectors_array = []
-
-        for vector in vectors.values():
-            if vector.cluster_id == cluster.id:
-                vectors_array.append(vector)
-
-        if len(vectors_array) > 0:
+        number_of_vectors = len(cluster.vectors_array)
+        if number_of_vectors > 0:
 
             for i in range(len(cluster.center)):
                 old_weight = cluster.components_weight_array[i]
 
-                mean = 0
-                for j in range(len(vectors_array)):
+                variance_values = []
+                for j in range(number_of_vectors):
+                    variance_values.append(cluster.vectors_array[j].components_array[i])
 
-                    mean += vectors_array[j].components_array[i]
-
-                mean = mean / len(vectors_array)
-
-                sum_variance = 0
-                for j in range(len(vectors_array)):
-                    sum_variance += math.pow((vectors_array[j].components_array[i] - mean), 2)
-
-                variance = sum_variance / len(vectors_array)
+                variance = 0
+                if len(variance_values) < 2:
+                    variance = statistics.variance(variance_values)
 
                 weight = (old_weight / (1 + variance))
                 new_weights.append(weight)
@@ -221,7 +213,7 @@ def k_means(k, vectors):
     stable = False
     while not stable:
         print("K-Means")
-        for vector in vectors.values():
+        for vector in vectors.values(): # Find the closest cluster of the vector
             for cluster in clusters:
                 distance = euclidean_distance(vector.components_array, cluster.components_weight_array, cluster.center)
 
@@ -250,7 +242,7 @@ def k_means(k, vectors):
 ##########
 
 if __name__ == '__main__':
-    nb_clusters = 344
+    nb_clusters = 5
 
     print("Load files")
     results = load_results()
