@@ -1,7 +1,6 @@
 import math
 import random
 import numpy
-import _thread
 
 
 #############
@@ -10,37 +9,38 @@ import _thread
 
 class Vector:
     def __init__(self):
-        self.dimensions = []
-        self.dist = math.inf
-        self.cluster = None
+        self.components_array = []
+        self.distance = math.inf
+        self.cluster_id = None
 
-    def add_dimension(self, dimension):
-        self.dimensions.append(dimension)
+    def add_component(self, component):
+        self.components_array.append(component)
 
-    def update_dimension(self, index, dimension):
-        self.dimensions[index] = dimension
+    def update_component(self, index, component):
+        self.components_array[index] = component
 
 
 class Cluster:
-    def __init__(self):
-        self.dimensions = []
-        self.dimensions_weight = []
+    def __init__(self, id):
+        self.center = []
+        self.components_weight_array = []
+        self.id = id
+        self.vectors_array = []
 
-    def __init__(self, dimensions):
-        self.dimensions = dimensions
-        self.dimensions_weight = []
+    def set_center(self, center):
+        self.center = center
 
-    def add_dimension(self, dimension):
-        self.dimensions.append(dimension)
+    def add_component(self, component):
+        self.center.append(component)
 
-    def update_dimension(self, index, dimension):
-        self.dimensions[index] = dimension
+    def update_component(self, index, component):
+        self.center[index] = component
 
-    def add_dimension_weight(self, weight):
-        self.dimensions_weight.append(weight)
+    def add_component_weight(self, weight):
+        self.components_weight_array.append(weight)
 
-    def update_dimension_weight(self, index, weight):
-        self.dimensions_weight[index] = weight
+    def update_component_weight(self, index, weight):
+        self.components_weight_array[index] = weight
 
 
 ###############
@@ -78,14 +78,13 @@ def calculate_number_of_documents():
 
 
 def init_vectors(vector_size):
-    """initialize a vector (D=vector_size) for each documents filled with 0."""
+    """initialize a vector (number of results = vector_size) for each documents filled with 0."""
     vectors = {}
     for j in range(len(docwords)):
         doc_id = docwords[j].split(" ")[0]
         vectors[doc_id] = Vector()
         for i in range(vector_size):
-            vectors[doc_id].add_dimension(0)
-            # vectors[doc_id].add_dimension_weight(0)
+            vectors[doc_id].add_component(0)
 
     return vectors
 
@@ -106,24 +105,8 @@ def update_vectors(vectors):
     for line in docwords:
         array_line = line.split(" ")
         index = find_word_index(int(array_line[1]))
-        dimension = (int((array_line[2])))
-        vectors[array_line[0]].update_dimension(index, dimension)
-
-
-# def init_vectors_weight(vectors, nb_clusters, nb_word_use):
-#     """set dimension weight of every vector to the initial value"""
-#     for line in docwords:
-#         array_line = line.split(" ")
-#         index = find_word_index(int(array_line[1]))
-#         vectors[array_line[0]].update_dimension_weight(index, nb_clusters * nb_word_use / len(vectors) * nb_word_use)
-
-def euclidean_distance_no_weight(v1, v2):
-    sum = 0
-
-    for i in range(len(v1)):
-        sum += math.pow((v1[i] - v2[i]), 2)
-
-    return math.sqrt(sum)
+        component = (int((array_line[2])))
+        vectors[array_line[0]].update_component(index, component)
 
 
 def euclidean_distance(v1, v2_weight, v2):
@@ -140,33 +123,32 @@ def update_clusters_centers(clusters):
     new_clusters = []
 
     for cluster in clusters:
-        new_cluster = Cluster()
-        for i in range(number_of_documents):  # create new cluster filled with zeroes
-            new_cluster.append_dimension(0)
+        new_cluster = Cluster(cluster.id)
+        for i in range(vector_size):  # create new cluster filled with zeroes
+            new_cluster.add_component(0)
+            new_cluster.add_component_weight(1)
 
         number_of_vector = 0
         for vector in vectors.values():
-            if vector.cluster == cluster:  # get throw each vector and check if it belongs to the cluster
+            if vector.cluster_id == cluster.id:  # get throw each vector and check if it belongs to the cluster
                 number_of_vector += 1
 
                 index = 0
-                for dimension in vector.dimensions:  # if so, add the vector in the mean calculation
-                    new_cluster.update_dimension(index, new_clusters.dimensions[index] + dimension)
+                for component in vector.components_array:  # if so, add the vector in the mean calculation
+                    new_cluster.center[index] += component
                     index += 1
 
         if number_of_vector != 0:
-            for i in range(
-                    len(cluster.dimensions)):  # divide the sum by the number of vector in order to get the mean value
-                new_cluster.update_dimension(i, new_clusters.dimensions[i] / number_of_vector)
-                # new_cluster[i] = new_cluster[i] / number_of_vector
+            for i in range(len(cluster.center)):  # divide the sum by the number of vector -> mean value
+                new_cluster.center[i] = new_cluster.center[i] / number_of_vector
 
         new_clusters.append(new_cluster)
 
     is_stable = True
     for i in range(len(clusters)):
-        distance = euclidean_distance(clusters[i].dimensions, new_clusters[i].dimensions_weight,
-                                      new_clusters[i].dimensions)
-        print(distance)
+        distance = euclidean_distance(clusters[i].center, new_clusters[i].components_weight_array,
+                                      new_clusters[i].center)
+
         if distance > numpy.finfo(float).eps:
             is_stable = False
 
@@ -175,98 +157,48 @@ def update_clusters_centers(clusters):
 
 def print_vector(vector):
     print("------------- Vector ------------")
-    for val in vector.dimensions:
+    for val in vector.components_array:
         print(val)
 
 
 def update_clusters_weight(clusters):
-    """function use to update the weight of each dimension of each cluster"""
+    """function use to update the weight of each vector of each cluster"""
 
     print("Update clusters weight")
     for cluster in clusters:
 
         new_weights = []
-        sum_wieight_sqr = 0
+        sum_weights_sqr = 0
 
-        for i in range(len(cluster.dimensions)):
-            old_weight = cluster.dimensions_weight[i]
+        vectors_array = []
 
-            # todo found variance of cluster dim j
-            variance = 0.5
+        for vector in vectors.values():
+            if vector.cluster_id == cluster.id:
+                vectors_array.append(vector)
 
-            weight = (old_weight / (1 + variance))
-            sum_wieight_sqr += pow(weight, 2)
-            new_weights.append(weight)
+        if len(vectors_array) > 0:
 
-        for i in range(len(cluster.dimensions)):
-            cluster.update_dimension_weight(i, new_weights[i] * (len(cluster.dimensions)) / math.sqrt(sum_wieight_sqr))
+            for i in range(len(cluster.center)):
+                old_weight = cluster.components_weight_array[i]
 
+                mean = 0
+                for j in range(len(vectors_array)):
+                    mean += vectors_array[j].components_array[i]
 
-def get_distance_matrix(vectors):
-    distance_matrix = []
-    for i in range(len(vectors)):
-        distance_matrix[i] = []
-        for j in range(len(vectors)):
-            if i != j:
-                distance_matrix[i][j] = euclidean_distance(vectors[i].dimensions, vectors[j].dimensions)
-            else :
-                distance_matrix[i][j] = -1
+                mean = mean / len(vectors_array)
 
+                sum_variance = 0
+                for j in range(len(vectors_array)):
+                    sum_variance += math.pow((vectors_array[j].components_array[i] - mean), 2)
 
-    return distance_matrix
+                variance = sum_variance / len(vectors_array)
 
+                weight = (old_weight / (1 + variance))
+                new_weights.append(weight)
+                sum_weights_sqr += pow(weight, 2)
 
-def init_cluster_list(vectors):
-    cluster_list = []
-
-    for i in range(len(vectors)):
-        cluster_list[0].append(vectors[i])
-
-    return cluster_list
-
-
-def search_nearest(distance_matrix, vectors, cluster_list):
-
-    min_val = distance_matrix[0][0]
-    min_i = 0
-    min_j = 0
-
-
-    for i in range(len(distance_matrix)):
-        for j in range(len(distance_matrix[i])):
-            if distance_matrix[i][j] != -1 and distance_matrix[i][j] < min_val:
-                min_val = distance_matrix[i][j]
-                min_i = i
-                min_j = j
-
-    new_cluster = []
-    new_cluster.append(vectors[min_i])
-    new_cluster.append(vectors[min_j])
-
-    cluster_list.append(new_cluster)
-
-
-    new_vectors = []
-
-    for i in range(len(vectors)):
-        if i != min_i and i != min_j :
-            new_vectors.append(vectors[i])
-
-    merge_vector = Vector()
-
-    for i in range(len(vectors[i].dimensions)):
-        val = vectors[min_i].dimensions[i]+vectors[min_j].dimensions[i]
-        val = val / 2.
-        merge_vector.add_dimension(val)
-
-    new_vectors.append(merge_vector)
-
-    vectors = new_vectors
-
-    distance_matrix = get_distance_matrix(vectors)
-
-
-
+            for i in range(len(cluster.center)):
+                cluster.update_component_weight(i, new_weights[i] * (len(cluster.center)) / math.sqrt(sum_weights_sqr))
 
 
 def k_means(k, vectors):
@@ -276,9 +208,10 @@ def k_means(k, vectors):
         # init cluster with a random vector
         list_keys = list(vectors.keys())
         key = str(random.choice(list_keys))
-        cluster = Cluster(vectors[key].dimensions)
-        for i in range(len(cluster.dimensions)):
-            cluster.add_dimension_weight(1)
+        cluster = Cluster(i)
+        cluster.set_center(vectors[key].components_array)
+        for i in range(len(cluster.center)):
+            cluster.add_component_weight(1)
         clusters.append(cluster)
 
     stable = False
@@ -286,49 +219,69 @@ def k_means(k, vectors):
         print("K-Means")
         for vector in vectors.values():
             for cluster in clusters:
-                dist = euclidean_distance(vector.dimensions, cluster.dimensions_weight, cluster.dimensions)
+                distance = euclidean_distance(vector.components_array, cluster.components_weight_array, cluster.center)
 
-                if dist < vector.dist:
-                    vector.cluster = cluster
+                if distance < vector.distance:
+                    vector.cluster_id = cluster.id
+                    vector.distance = distance
 
         update_clusters_weight(clusters)
         clusters, stable = update_clusters_centers(clusters)
 
-    with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
-        for out_cluster in clusters:
-            empty = True
-            for key, vector in vectors.items():
-                if vector.cluster == out_cluster:
-                    fou.write(key + "\n")
-                    empty = False
+    return clusters
+    # with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
+    #     for out_cluster in clusters:
+    #         empty = True
+    #         for key, vector in vectors.items():
+    #             if vector.cluster_id == out_cluster.id:
+    #                 fou.write(key + "\n")
+    #                 empty = False
+    #
+    #         if not empty:
+    #             fou.write("\n" + "-" * 50 + "\n")
 
-            if not empty:
-                fou.write("\n" + "-" * 50 + "\n")
+
+def get_vector_from_cluster(cluster):
+    out_vectors = {}
+    for key, vector in vectors.items():
+        if vector.cluster_id == cluster.id:
+            out_vectors[key] = vector
+    return out_vectors
+
+
+def recursive_call(clusters, fou):
+    for cluster in clusters:
+        sub_vectors = get_vector_from_cluster(cluster)
+        if len(sub_vectors) < 50:
+            for key,vector in sub_vectors.items():
+                fou.write(key+"\n")
+            fou.write("\n" + "-" * 50 + "\n")
+        else :
+            recursive_call(k_means(2,sub_vectors),fou)
 
 
 ##########
 #  Main  #
 ##########
 
-print("Load files")
-results = load_results()
-docwords = load_docwordsreduced()
+if __name__ == '__main__':
+    nb_clusters = 2
 
-print("Init tools")
-number_of_documents = calculate_number_of_documents()
-vector_size = len(results)
+    print("Load files")
+    results = load_results()
+    docwords = load_docwordsreduced()
 
-print("Init vectors")
-vectors = init_vectors(vector_size)
-update_vectors(vectors)
+    print("Init tools")
+    number_of_documents = calculate_number_of_documents()
+    vector_size = len(results)
 
-distance_matrix = get_distance_matrix(vectors)
+    print("Init vectors")
+    vectors = init_vectors(vector_size)
+    update_vectors(vectors)
 
-cluster_list = init_cluster_list(vectors)
+    print("Start K-Means")
+    random.seed()
 
-search_nearest(distance_matrix,vectors,cluster_list)
-
-
-#print("Start K-Means")
-#random.seed()
-#k_means(nb_clusters, vectors)
+    clusters = k_means(nb_clusters, vectors)
+    with open('output-clusters.txt', 'w', encoding='utf-8') as fou:
+        recursive_call(clusters, fou)
