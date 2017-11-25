@@ -153,6 +153,7 @@ def update_clusters_centers(clusters):
         distance = euclidean_distance(clusters[i].center, new_clusters[i].components_weight_array,
                                       new_clusters[i].center)
 
+        print(distance)
         if distance > numpy.finfo(float).eps:
             is_stable = False
 
