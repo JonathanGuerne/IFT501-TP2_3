@@ -250,7 +250,7 @@ def k_means(k, vectors):
 ##########
 
 if __name__ == '__main__':
-    nb_clusters = 300
+    nb_clusters = 20
 
     print("Load files")
     results = load_results()
