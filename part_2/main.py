@@ -133,8 +133,8 @@ def update_clusters_centers(clusters):
             new_cluster.add_component_weight(1)
 
         for vector in vectors.values():
-            if vector.cluster_id == cluster.id:  # get throw each vector and check if it belongs to the cluster
-                cluster.vectors_array.append(vector)
+            # if vector.cluster_id == cluster.id:  # get throw each vector and check if it belongs to the cluster
+            #     new_cluster.vectors_array.append(vector)
 
                 index = 0
                 for component in vector.components_array:  # if so, add the vector in the mean calculation
@@ -153,18 +153,16 @@ def update_clusters_centers(clusters):
         distance = euclidean_distance(clusters[i].center, new_clusters[i].components_weight_array,
                                       new_clusters[i].center)
 
-        print(distance)
         if distance > numpy.finfo(float).eps:
             is_stable = False
 
     return new_clusters, is_stable
 
 
-def print_vector(vector):
-    print("------------- Vector ------------")
-    for val in vector.components_array:
-        print(val)
-
+def update_vectors_of_cluster(cluster):
+    for vector in vectors.values():
+        if vector.cluster_id == cluster.id:  # get throw each vector and check if it belongs to the cluster
+            cluster.vectors_array.append(vector)
 
 def update_clusters_weight(clusters):
     """function use to update the weight of each vector of each cluster"""
@@ -175,7 +173,10 @@ def update_clusters_weight(clusters):
         new_weights = []
         sum_weights_sqr = 0
 
+        update_vectors_of_cluster(cluster)
+
         number_of_vectors = len(cluster.vectors_array)
+
         if number_of_vectors > 0:
 
             for i in range(len(cluster.center)):
@@ -186,8 +187,10 @@ def update_clusters_weight(clusters):
                     variance_values.append(cluster.vectors_array[j].components_array[i])
 
                 variance = 0
-                if len(variance_values) < 2:
+                if len(variance_values) > 1:
                     variance = statistics.variance(variance_values)
+
+                print("variance: " + str(variance))
 
                 weight = (old_weight / (1 + variance))
                 new_weights.append(weight)
