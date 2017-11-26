@@ -234,9 +234,15 @@ def k_means(k, vectors):
 
     for cluster in clusters :
         sum = 0
-        for weight in cluster.components_weight_array:
-            print(weight)
-        print(sum)
+
+        weights = cluster.components_weight_array
+        weights.sort()
+        weights.reverse()
+
+        for weight in weights:
+            print(str(weight))
+
+        print("\n" + "-" * 50 + "\n")
 
 
 ##########
